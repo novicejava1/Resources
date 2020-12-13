@@ -1,9 +1,11 @@
-Purpose - Fix the Simplescreenrecorder missing status icon in Fedora 32 tray
+Purpose - Fix the Simplescreenrecorder system tray icon status in Fedora 32
 
 Pre-requsite -
 Fedora 32 installed
 
 Simplescreenrecorder is a package provided by RPM Fusion repository. This package is used basically for screen recordings.
+
+Official Website - https://www.maartenbaert.be/simplescreenrecorder/
 
 For Fedora 32 the latest package that is availble as per the repository is as given below.
 
@@ -15,23 +17,20 @@ Currently i have the above package installed on my Fedora 32 system.
 [admin@fed32 yum.repos.d]$ rpm -qa | grep simplescreenrecorder
 simplescreenrecorder-0.4.2-3.fc32.x86_64
 
-The issue with the currently installed package is whenever i am trying to start/stop or pause a recording it is not able to show the correct status icons in system for start, stop or pause the recording as shown in the screenshot below.
+The issue with the currently installed package is whenever i am trying to record or pause a video it is not able to show the correct status icons in system tray for each operation as shown in the screenshot below.
 
-This bug is not present in the Fedora 31 system wherein the system tray icon is able to show the correct status of the recording with which it will be easy to use shortcuts to take appropriate actions (ie. whether to start, stop or pause the recording)
+This bug is not present in the Fedora 31 system wherein the system tray icon is able to show the correct status of the recording with which it will be easy to use shortcuts to take appropriate actions (ie. whether to record or pause the video)
 
-Lets try to understand and fix this tray icon status issue here in this article.
+Lets try to understand and fix this system tray icon status issue here in this article.
 
+SimpleScreenRecorder comes with a default set of icons to show the correct status of the Recorder in the System tray at the bottom right corner. 
 
-SimpleScreenRecorder comes a default set of icons to show the correct status of the Recorder in the System tray at the bottom right corner. Lets dig into the simplescreenrecorder rpm package to know where those icons are available on the filesystem after we install the simplescreenrecorder package.
+Lets dig into the simplescreenrecorder rpm package to know where those icons are available on the filesystem after we install the simplescreenrecorder package.
 
-As you could see from the below output there are .png files available for each status of recorder (ie. error, idle, paused, recording and default icon). These 5 icon status images are available in various pixel sizes in separate folder (ie. 16x16, 22x22, 24x24)
+As you could see from the below output there are .png files available for each status of recorder (ie. error, idle, paused, recording and default icon). These 5 icon status images are available in various pixel sizes in separate folder (ie. 16x16, 22x22, 24x24 etc)
 
 [root@fed32 ~]# rpm -ql simplescreenrecorder | grep icons
-/usr/share/icons/hicolor/128x128/apps/simplescreenrecorder-error.png
-/usr/share/icons/hicolor/128x128/apps/simplescreenrecorder-idle.png
-/usr/share/icons/hicolor/128x128/apps/simplescreenrecorder-paused.png
-/usr/share/icons/hicolor/128x128/apps/simplescreenrecorder-recording.png
-/usr/share/icons/hicolor/128x128/apps/simplescreenrecorder.png
+...
 /usr/share/icons/hicolor/16x16/apps/simplescreenrecorder-error.png
 /usr/share/icons/hicolor/16x16/apps/simplescreenrecorder-idle.png
 /usr/share/icons/hicolor/16x16/apps/simplescreenrecorder-paused.png
@@ -42,46 +41,7 @@ As you could see from the below output there are .png files available for each s
 /usr/share/icons/hicolor/192x192/apps/simplescreenrecorder-paused.png
 /usr/share/icons/hicolor/192x192/apps/simplescreenrecorder-recording.png
 /usr/share/icons/hicolor/192x192/apps/simplescreenrecorder.png
-/usr/share/icons/hicolor/22x22/apps/simplescreenrecorder-error.png
-/usr/share/icons/hicolor/22x22/apps/simplescreenrecorder-idle.png
-/usr/share/icons/hicolor/22x22/apps/simplescreenrecorder-paused.png
-/usr/share/icons/hicolor/22x22/apps/simplescreenrecorder-recording.png
-/usr/share/icons/hicolor/22x22/apps/simplescreenrecorder.png
-/usr/share/icons/hicolor/24x24/apps/simplescreenrecorder-error.png
-/usr/share/icons/hicolor/24x24/apps/simplescreenrecorder-idle.png
-/usr/share/icons/hicolor/24x24/apps/simplescreenrecorder-paused.png
-/usr/share/icons/hicolor/24x24/apps/simplescreenrecorder-recording.png
-/usr/share/icons/hicolor/24x24/apps/simplescreenrecorder.png
-/usr/share/icons/hicolor/256x256/apps/simplescreenrecorder-error.png
-/usr/share/icons/hicolor/256x256/apps/simplescreenrecorder-idle.png
-/usr/share/icons/hicolor/256x256/apps/simplescreenrecorder-paused.png
-/usr/share/icons/hicolor/256x256/apps/simplescreenrecorder-recording.png
-/usr/share/icons/hicolor/256x256/apps/simplescreenrecorder.png
-/usr/share/icons/hicolor/32x32/apps/simplescreenrecorder-error.png
-/usr/share/icons/hicolor/32x32/apps/simplescreenrecorder-idle.png
-/usr/share/icons/hicolor/32x32/apps/simplescreenrecorder-paused.png
-/usr/share/icons/hicolor/32x32/apps/simplescreenrecorder-recording.png
-/usr/share/icons/hicolor/32x32/apps/simplescreenrecorder.png
-/usr/share/icons/hicolor/48x48/apps/simplescreenrecorder-error.png
-/usr/share/icons/hicolor/48x48/apps/simplescreenrecorder-idle.png
-/usr/share/icons/hicolor/48x48/apps/simplescreenrecorder-paused.png
-/usr/share/icons/hicolor/48x48/apps/simplescreenrecorder-recording.png
-/usr/share/icons/hicolor/48x48/apps/simplescreenrecorder.png
-/usr/share/icons/hicolor/64x64/apps/simplescreenrecorder-error.png
-/usr/share/icons/hicolor/64x64/apps/simplescreenrecorder-idle.png
-/usr/share/icons/hicolor/64x64/apps/simplescreenrecorder-paused.png
-/usr/share/icons/hicolor/64x64/apps/simplescreenrecorder-recording.png
-/usr/share/icons/hicolor/64x64/apps/simplescreenrecorder.png
-/usr/share/icons/hicolor/96x96/apps/simplescreenrecorder-error.png
-/usr/share/icons/hicolor/96x96/apps/simplescreenrecorder-idle.png
-/usr/share/icons/hicolor/96x96/apps/simplescreenrecorder-paused.png
-/usr/share/icons/hicolor/96x96/apps/simplescreenrecorder-recording.png
-/usr/share/icons/hicolor/96x96/apps/simplescreenrecorder.png
-/usr/share/icons/hicolor/scalable/apps/simplescreenrecorder-error.svg
-/usr/share/icons/hicolor/scalable/apps/simplescreenrecorder-idle.svg
-/usr/share/icons/hicolor/scalable/apps/simplescreenrecorder-paused.svg
-/usr/share/icons/hicolor/scalable/apps/simplescreenrecorder-recording.svg
-/usr/share/icons/hicolor/scalable/apps/simplescreenrecorder.svg
+...
 
 By default any application that is launched if its system tray is enabled it will try to use the icon images from a particular folder based on the destop theme that is currently enabled on your system. On my system i am using the 'Mint-Y-Dark-Aqua' desktop theme. 
 
@@ -143,5 +103,7 @@ Lets try to copy the simplescreenrecorder icon images from the '/usr/share/icons
 
 [root@fed32 apps]# cp -pr /usr/share/icons/hicolor/16x16/apps/simplescreenrecorder* /usr/share/icons/Mint-Y/apps/16/
 cp: overwrite '/usr/share/icons/Mint-Y/apps/16/simplescreenrecorder.png'? y
+
+Now you can close your simplescreenrecorder if its open already and try to relaunch it and you should be able to see the icons specific to the state or operation of the application.
 
 Hope this article helps you in fixing this issue if you are using Simplescreenrecorder on you Fedora 32 machine. Thank you
