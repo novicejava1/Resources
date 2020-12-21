@@ -1,0 +1,563 @@
+===============================================================================================
+Getting to know OpenShift
+===============================================================================================
+
+- Containers are a new way to devilver applications
+- Container platform provides orchestration and other services that containers need for users to take full advantage of containers
+- Container platform helps to build, deploy, run and orchestrate the applications running inside it
+- Openshift uses two primary tools to serve applications in containers
+	Container runtime for creating containers
+	Orchestration engine for managing clusters of servers running containers
+- Container runtime works on Linux servers to create and manage clusters
+- Container packages the application code, runtime, binary and libraries for the application to work in container
+- Each Container application is isolated from any other container application. Here are the five resources that are isolated
+	Mounted filesystem
+	Shared memory resources
+	Hostname and domain name
+	Network resources (IP address, MAC address and memory buffer)
+	Process counters
+
+- In Openshift the service that creates and manages containers is docker
+- Docker engine helps in managing containers by shared linux kernel but its limited to single standalone host
+- To deploy a HA and Scalable containerized application we need to container platform
+- Openshift uses kubernetes as its orchestration engine
+- Kubernetes employs a master/node architecture
+	Master - Manages the cluster servers
+	Node - Run the application workloads
+- Applications within the Nodes can communicate with each other
+- OpenShift uses docker and Kubernetes as a starting point for its design
+- Additional tools and services provided by Openshift on top of Docker and Kubernetes are
+	Integrated image registry running in a container
+	Integrated routing layer
+	Software define networking solution to encrypt and route network traffic
+
+- A service is a proxy that connects multiple pods and maps them to an IP address on one or more nodes in the cluster
+- A DNS entry is created automatically whenever an application is deployed into the Openshift cluster. DNS entry is added to the LB which interfaces with kubernetes services
+- All communications inside the cluster are encrypted using TLS
+- Openshift SDN is based Open vSwitch opensource project
+- Openshift helps in managing the application lifecyle using the below workflow
+	Build
+	Deployment
+	Upgrade
+	Retirement
+
+- Builder image is a special container images that includes applications and libraries needed for an application in a given language
+- A special build pod is used to create a custom container image combining the source code and builder image
+- The build process takes the source code for an application and combines it with the builder image to create a custom application image for the application.
+- This customized application image then pushed to the image registry to be further deployed into cluster nodes
+
+- In the default workflow whenever a new custom application is built, application deployment is automatically triggered.
+- Along with the pods that are deployed onto nodes, service is created along with DNS route in routing layer
+
+- Application upgrade also follows the similar flow, when a upgrade is triggered a new container image is created and new application version is deployed
+- An application container holds everything required for it to run
+	source or compiled code
+	libraries or dependent applications
+	configuration and information to connect shared data sources
+- Containers leverage the kernel for sharing the resources from the host machine
+- Virtual machines and Containers both rely on the Linux kernel to operate
+
+- Container challenges
+	Legacy application migration
+	Support for enterprise grade storage and networking solution still in preview mode for some vendors
+- The complexity of the containerized application increases when we try to deploy a stateful application which wants to maintain
+	User state
+	application state
+	Use a shared relational or non relation DB
+- Openshift help in configuring a persistent network storage service to be used by stateful application within the containers
+- Application can take advantage of shared persistent volumes to dynamically allocate storage whenever deployed
+- For stateful applications, persistent storage is a key component that must be tightly integrated into your design.
+- This persistent storage also needs to be automatically scalable
+- Integrating stateful and stateless application by properly reviewing the legacy application and desigining applications as microservices is a complex task that needs to be done carefully
+- Each service runs in its own container, the services can be scaled up and down independently making the applicaiton less vulnerable as each service will have its own unique connection for persistent storage
+
+===============================================================================================
+Getting Started
+===============================================================================================
+
+- Openshift Container platform can be managed using three ways
+	Using Web UI interface
+	Using CLI
+	Using REST API service
+- Minikube is a single node Openshift Cluster used for development purpose
+
+- Every action in Openshift requires authentication
+- By default Openshift cluster initial configuration is to anonyamous access allowed (ie. Allow All identity provider)
+- OC is the cli tool used from a workstation to manage the OCP
+- Logging into a OCP Cluster requires user, password, API server url
+	$ oc login -u dev -p dev https://ocp-1.192.168.122.100.nip.io:8443
+- API server by default listens on 8443 TCP channel port
+- Create a new project in OCP cluster
+	oc new-project <projectname>
+- In OCP projects are nothing but a collection of related applications logically grouped together. 
+- oc default to the new project that is created
+- We can specify the action to be performed against a particular project using -n parameter
+- The project name has a restricted syntax because it becomes part of the URL for all of the applications deployed in OpenShift.
+- You can retrieve the command to run by manually entering the /oauth/token/request path against the URL for the cluster access endpoint. To retrieve the access token used to login to the OC web console
+
+- Applications in Openshift consist of number of different components in a project that all work together to deploy, update and maintain application through its lifecycle
+	Custom container images
+	Image streams
+	Application pods
+	Build configs
+	Deployment configs
+	Deployments
+	Services
+- The component that controls the creation of your application containers is the build config
+- The build config is used to track whats required to build your application and to trigger the creation of application container image
+- Build config job triggers the deployment config job thats created for the newly created application
+- The deployment configs are created as part of the initial application deployment command
+- Deployment config keeps track of the following application information
+	Version of the application deployed
+	Number of replicas to maintain
+	Trigger events to redeploy
+	Upgrade strategy
+	Application deployment
+- In Openshift the applications are horizontally scalable using the concept of replicas
+- Replication controller is a special kind of pods that maintains the number of replicas for a particular application
+- Each deployment for an application is available to deployment config component using deployments
+- Pod lifecycle in Openshift
+	Pending
+	Running
+	Succeeded
+	Failed
+	Unknown
+- Failed and Succeeded are considered as terminal status for a pod and they wont restart again
+- The default application-upgrade method in OpenShift is to perform a rolling upgrade.
+- Rolling upgrades create new versions of an application, allowing new connections to the application to access only the new version
+- The pods for the older deployment are remove once the traffic is fully diverted to the new pods
+
+- Using image streams, you can monitor applications and trigger new deployments when their components are updated
+- Image streams are linked to the container image for an application as well as its deployment
+
+- A service uses the labels applied to pods when they’re created to keep track of all pods associated with a given application
+- A service acts as a internal proxy for the application deployed to pods
+- Each service gets an IP address that’s only routable from within the OpenShift cluster.
+
+- Once the service is created, we need to create a route to expose app-cli externally from your OpenShift cluster.
+- By default when Openshift cluster is installed one of the services thats created is a HAProxy service.
+- HAProxy is a software load balancer application
+- To create a route for the application
+	oc expose svc/app-cli
+- High level steps are then need to be carried out to make our application accessible from internet
+	Create a new project
+	Deploy the application
+	Expose the service
+- An application’s project is included in the URL that’s generated when you create an application route
+	App URL - http://<application-name>-<project-name>.<cluster-app-domain>
+- To get information about the service and the route exposed
+	oc describe svc/app-cli
+	oc describe route/app-cli
+
+- The route description contains the URL that is created, the associated service and the endpoints for the service
+- The openshift project is a special project that acts as a repository for images and templates available for use by everyone in the OpenShift cluster.
+
+Login using developer account
+	oc login
+Create a new Image loader project
+	oc new-project image-uploader --display-name='Image Uploader Project'
+Get the default project set
+	oc get project
+Add new application to this project or deploy a kubernetes application using kubectl
+	oc new-app ruby~https://github.com/sclorg/ruby-ex.git
+	kubectl create deployment hello-node --image=gcr.io/hello-minikube-zero-install/hello-node
+	oc new-app centos/ruby-22-centos7~https://github.com/openshift/ruby-ex.git
+Show the default context application
+	oc whoami --show-context
+To get the list of clusters
+	oc config get-clusters
+Get a list of context created
+	oc config get-contexts
+
+===============================================================================================
+Containers are Linux
+===============================================================================================
+
+- In Openshift cluster containers isolate their processes on the application node
+- Openshift, Kubernetes, Docker and the Linux kernel are all the dependent components that provide the required services to deploy and access the application
+- How Openshift manages the deployments
+	Creates a custom image based on the builder image
+	Pushes the image to registry
+	Build config is created
+	Deployment config is created
+	Deployment of application based on Deployment config is triggered
+	Internal LB is updated with DNS entry for application
+	Kubernetes Service is created to route the LB request to respective backend pods
+	Creates an image stream components which monitors for any changes in builder image, build config, deployment config and triggeres redeployment
+- OpenShift creates the deployment config, image stream, and build config components
+- Kubernetes schedules applications across nodes. Its creates the following components when application deployment is triggered at Openshift layer
+	Replication controller - Scales the application as needed
+	Service - To expose the application
+	Pods - The smallest scalable units in Openshift
+- The service is the internal IP address that’s referenced in the route created in the OpenShift load balancer
+- On each application node kubernetes uses docker to create the containers for each application deployment
+
+- Docker is a container runtime which helps in creating, maintaing and deleting the containers
+- Kubernetes controls docker to create contianers that house the application. Docker container is associated with the Kubernetes pod
+- To isolate the libraries and applications in the container image, along with other server resources, docker uses Linux kernel components.
+	Linux namespaces	- For isoloation of resources
+	Control groups		- For access limit on resource utiliztion CPU and Memory
+	SELinux context		- Restrict accessing resources on the host or other containers
+- Docker daemon creates these kernel resources dynamically when the container is created
+- Linux server is separated into two primary resource groups
+	Userspace and Kernelspace
+- The applications in a container run in the userspace, but the components that isolate the applications in the container run in the kernelspace.
+- Like any other process running on a Linux server, each container has an assigned process ID (PID) on the application node
+- Docker creates a unique set of namespaces to isolate the resources in each container.
+- The lsns command accepts a PID with the -p option and outputs the namespaces associated with that PID.
+- OpenShift uses five Linux namespaces to isolate processes and resources on application nodes
+	Mount	- Unique filesystem for container
+	Network	- Gives isolated network stack
+	PID	- Sets each container with a PID counter	
+	UTS	- Give hostname and domain name for each container
+	IPC	- Provides shared memory
+- Two additional namespaces not used by Openshift are
+	Cgroup - Used as a shared resource 
+	User - This namespace can map a user in a container to a different user on the host
+
+- The mount namespace isolates filesystem content for each container
+- Openshift configuration uses block device LVM for container storage. Each container gets its own logical volume when its created
+- lsblk command shows all the LV's created by docker on the host
+- To get the details of the LV used by the container 
+	docker inspect -f '{{ .GraphDriver.Data.DeviceName }}' fae8e211e7a7
+- There are three types namespace which we can divide on a high level for a container node
+	System mount namespace
+	Docker daemon mount namespace
+	application container mount namespace
+- UTS is Unix time sharing lets each container have its own hostname and domain name
+- The hostname for each OpenShift container is its pod name
+- Each container has its own hostname because of its unique UTS namespace
+
+- PID namespace helps in isolating visible PID's in a container to only the applcations in it. 
+- There is a unique set of PID's that are assigned within each container
+
+- Applications can be designed to share memory resources
+- If a container is destroyed, shared memory resources are destroyed as well
+
+- The network namespace isolates network resources and traffic in a container
+- In OpenShift, isolation and resource limits are enforced in the Linux kernel on the application nodes
+
+===============================================================================================
+Working with Services
+===============================================================================================
+
+- Openshift deploys the applications with the ability to scale up and down. This scaling of application pods is done using the Replication Controller component
+- The RC’s main function is to ensure that the desired number of identical pods is running at all times
+- The labels and selectors are key value pairs that are associated with all Openshift components
+- To get information about the RC component
+	oc describe rc <rc_name>		[limited output]
+	oc get rc <app_name> -l -o yaml		[details information with all attributes]
+- RCs use label selectors to constantly query the pods that they manage
+- Every object thats created in Openshift is assigned a collection of labels 
+- Label selectors are used to define the labels that are required when work needs to happen
+- To scale the number of pods for an application
+	oc scale dc app-cli-1 --replicas=1
+- Building a resilient application is to run automated health and status checks on your pods, restarting them when necessary without manual intervention.
+- Health checks of the applications can be done using liveness probe
+- In OpenShift, you define a liveness probe as a parameter for specific containers in the deployment config
+- A service on each node running the container is responsible for running the liveness probe that’s defined in the deployment config
+- The service that executes liveness probe checks is called the kubelet service. This is the primary service that runs on each application node in OpenShift
+- Liveliness probe
+	Setting parameter in the deployment config
+	Running a script inside the container
+	HTTP or TCP socket based probe
+- To create a readiness or liveliness probe on the command line
+	oc set probe
+- OpenShift also supports the concept of readiness probes, which ensures that the container is ready to receive traffic before marking the pod as active
+- Similar to a liveness probe, a readiness probe is run at the container level in a pod and supports the same HTTP(S), container execution, and TCP socket-based 
+checks.
+- If a readiness check fails, the pod remains running while not receiving traffic. The pod is not destroyed like in the case of liveliness probe failure
+- Readiness probe required in cases of these
+	Loading classes in memory	
+	Initializing dataset
+	Performing internal checks
+	Estabilishing connection to other container and services
+	Finishing startup sequence flow
+- failureThreshold for a readiness or liveness probe sets the number of times a probe will be attempted before it’s considered a failure
+- Once all three failures occur, the deployment is marked as failed, and OpenShift automatically reverts back to the previous deployment
+- Rollback of application can be done manually using the below
+	oc rollback app-cli
+
+===============================================================================================
+Autoscaling with metrics
+===============================================================================================
+
+- Openshift uses the following pod metrics to determine whether a application needs more pods or not
+	CPU and Memory
+- To use metrics in Openshift the administrator must deploy the Openshift metrics stack
+- This metrics stack comprises several popular open source technologies including Hawkular, Heapster, and Apache Cassandra
+- OpenShift also have the option to deploy Prometheus, a popular open source monitoring and altering solution, to provide and visualize cluster metrics
+- The pods that are used to collect and process metrics run in the openshift-infra project that was created by default during the installation
+- OpenShift provides an Ansible playbook called openshift-metrics.yml to install the OpenShift metrics stack
+- Kubelet is a process that runs on each Openshift node and coordinates which tasks the node should execute with the openshift master
+- Kubelet helps to expose the local metrics available to the Linux kernel through an HTTPS endpoint which are futher used by Openshift metrics pods
+- Heapster queries the API server for the list of nodes and then queries each individual node to get the metrics for the entire cluster
+- These collected metrics are stored in the backend Apache Cassandra database
+- Frontend Hawkular pod processes the metrics by connecting directly to Heapster
+- OpenShift uses the Hawkular REST API to pull metrics into the OpenShift console
+
+- Horizontal Pod Autoscaler (HPA) is a object to monitor the metrics and trigger the pods up and down
+- Create an HPA object. We can further define the min and max pods, cpu threshold, 
+	oc autoscale dc/app-cli
+- In OpenShift, a resource request is a threshold you can set that affects scheduling and quality of service
+- Resource limit, which is similar to a request but sets the maximum amount of resources guaranteed to the pod
+	BestEffort - Neither resource request or limit is set	(Low Priority Applications)
+	Burstable - Resource request is set			(Medium Priority Applications)
+	Guaranteed - Resource request and limit both are set	(Priority Applications)
+	oc describe node <node_name>	- To find the resource capacitiy and request and resource limits of running pods
+- The OpenShift scheduler places the pods only on nodes that can meet the resource limits required for the application
+- Apache benchmark is a tool used to simulating requests to the service url for increasing the load on the system
+- Avoiding thrashing - After OpenShift triggers an initial scale, there’s a forbidden window to prevent thrashing. During the forbidden window, no autoscaling options
+can occur. This prevents thrashing
+- In OpenShift 3.7 and higher, the default values are still 5 minutes (scale down) and 3 minutes (scale up), respectively, but they can be modified via the controllerManagerArgs field in the master-config.yaml file
+
+===============================================================================================
+Continuous Integration and Continuous Deployment
+===============================================================================================
+
+- Legacy waterfall method of software development code were released during maintenance windows mostly by organization which is a bulk of code released at once
+- Agile methods allowed for dividing the development in multiple shorted iterations and delivered to Operation to deploy. But this was a challenge for Operation to do multiple shorter iteration of deployment
+- CICD pipeline was introduced to mitigate this issue. The delivery mechanism for implementing CI/CD is often called a softwaredeployment pipeline or CI/CD pipeline
+
+- Developer can focus on the application development and package it with code application, configuration, and runtime dependencies to form an container image. These applications and services can deployed on premises or within the cloud environment
+- The container then goes through the software-deployment pipeline, automated testing, and processing
+- By making the container the centerpiece of the deployment pipeline, system stability and application resiliency are greatly increased
+- Containers let developers run more meaningful testing earlier in the development cycle, because they have environments that mimic production on their laptops
+- We can use image tagging to indicate that the image is ready to be promoted to other projects
+
+- Preparing a Development environment
+	Container images are build, tested and tagged if they pass tests to be moved further
+	Pre-built templates can be used to build the application image
+	An OpenShift template is essentially an array of objects that can be parameterized and spun up on demand
+		oc get templates -n openshift
+	Create a new project
+	Import the template into the project
+	Create a new application based on the imported template
+	A trigger of type webhook can be configured to automatically start a new OpenShift build
+	Keeping versions of container image tags aligned between different environments can be challenging.
+	- The proper way to apply a patch is to rebuild the container image when a new patch needs to be applied
+- Gogs is a self hosted Git repository
+
+- Enabling automated and consistent deployments with image streams
+	An image stream is an interface for one or more container images; it’s treated the same as a container registry
+	The image stream enables automation, such as providing triggers
+	An image stream tracks the sha256 hash of the images it’s pointing at, to ensure consistency
+	By using an image stream, OpenShift ensures that when pods are replicated, they’re the same binary
+	Having multiple tags for the same container image is helpful when you’re using the same image for different environments, because environments aren’t always in sync
+
+- As image streams also support tagging, the test environment can be configured to trigger new deployments only when the image stream with a certain tag is updated.
+- By having multiple tags, you can use the tags to manage the images in each environment
+
+
+- Promoting dev images to test environment
+	Create a new test project with new instance of MongoDB
+	By default, image streams in the OpenShift project can be seen by all other projects
+	But image streams created in other user created projects are not visible outside those individual projects
+	The image streams have limited scope in order to provide increased security
+	Users and teams who want to share images with other projects, such as in a CI/CD context, should modify this behavior using the OpenShift CLI
+		oc policy add-role-to-group system:image-puller system:serviceaccounts:test -n dev
+	The system:image-puller role allows users/groups to pull images from projects.
+	One image pull access is provided to the test environment project from dev project pull the image from dev project
+		oc new-app dev/todo-app-flask-mongo:promoteToTest
+	One of the challenges with promoting the same container image to multiple environments is that the application must dynamically find the dependencies it
+needs
+
+- Service Discovery
+	Service object provides a single IP address and port for all identical pods
+	Service provides a static IP address and port that don’t change for the life of the service object
+	Your application container may process dummy data on a laptop and then process more robust, targeted data sets as it moves from various environments into production.
+	In OpenShift, service discovery works with both environment variables and DNS.
+	In most cases, there is a single service object per deployment, but many service objects can be used when multiple ports need to be exposed
+	ClusterIP is the most common service type. The IP is a private IP address that was automatically generated by OpenShift and isn’t available from outside the OpenShift cluster
+	The ClusterIP can be identified in OpenShift using either DNS or environment variables
+
+- OpenShift runs SkyDNS for internal discovery of services. SkyDNS is a distributed nameserver specifically designed to run with etcd, the Kubernetes API server  backend, as its data store
+- The container uses the master for all DNS queries ending in .cluster.local
+- In OpenShift, DNS is often the preferred choice for service discovery
+- DNS entries normally take the form <service>.<pod_namespace>.svc.cluster.local, but the format can be shortened to <service>.<pod_namespace>.svc
+- The main benefit of using DNS as the service-discovery mechanism is that it’s consistent and less brittle than using environment variables
+
+- Services can also be discovered using environment variables
+- They have the benefit of being injectable at runtime, thus increasing application portability across environments
+- If the backend services are created after the consuming services are spun up, service discovery won’t work properly unless the backend service is redeployed
+- Adding environment variables to your deployment configuration will propagate down to the pod level
+- Configure the todo-app-flask-mongo deployment to redeploy every time a new image is available in the dev/todo-app-flask-mongo:promoteToTest image stream
+- It’s easy in OpenShift to match environments to dedicated machines by using OpenShift labels to match nodes to projects
+
+- Masking sensitive data in production environment
+	From a security perspective, using environment variables for sensitive data is a significant drawback
+	OpenShift has the concept of secrets: API objects that can be used to mask data better than environment variables
+	Secrets can be used to make sensitive information dynamically available to a container in OpenShift
+	They’re encoded/decoded and kept in memory only on the OpenShift nodes that require them and only for the period during which they’re needed
+		oc create secret generic
+	Mount the secret literals as files in the Application
+	When secrets are mounted as volumes, any update to the secret will automatically be pushed to the volumes that use that secret. This also goes for config
+maps
+	Many applications only look for files at startup and never reload them, so be careful about relying on live updates for secrets and config maps
+	Common use cases for secrets are SSL/TLS certificates and private Git repository credentials
+	If the configuration file doesn’t contain sensitive data, it makes more sense to use a config map
+
+- Similar to secrets, config maps are API objects. A config map object holds key-value pairs, typically configuration data
+- Config map objects can be exposed as environment variables, mounted as files in a container, or even configured as command-line arguments on application startup
+- Pod presets can be used to inject configmap constructs into pods, using labels as opposed to modifying individual deployments separately
+ OpenShift users use Jenkins to promote container images to different environments in a fully automated fashion
+- Jenkins has become the de facto industry standard to automate a CI/CD pipeline, mainly because it has a large ecosystem of plugins for
+third-party tools
+- OpenShift provides Jenkins container images as well as several Jenkins plugins to facilitate integrating Jenkins with OpenShift and building CI/CD pipelines
+
+- Openshift can natively integrate with Jenkins pipelines. This scriptable approach to building a pipeline allows Jenkins to run truly customizable workflows by using a special file for scripting called a Jenkinsfile
+
+- The way you update your application in OpenShift is called a deployment strategy; it’s a critical component of supporting a wide variety of applications in the platform
+- Openshift supports the below deployment strategies
+	Rolling - Default
+	Re-create - Scale down pods with old images to 0 and recreate new pods with new image
+	Blue/Green - Both old and new pods running so application can be validated before shutting down old pods
+	Canary - Adds checkpoints to the blue/green strategy by rolling out a fraction of the new images at a time and stopping
+	Dark Launches - Rolls out new code but doesn’t make it available to users
+- Databases almost always use the re-create strategy. For stateful applications also re-create strategy is the most suitable
+- Canary deployment is similar to a blue/green deployment except that whereas blue/green switches the route between services all at once, canary uses weights to determine what percentage of traffic should go to the new and old service
+
+===============================================================================================
+Creating and Managing Persistent storage
+===============================================================================================
+
+- Container storage is ephemeral. Whenever the container is destroyed the data is also destroyed along with it
+- When applications need to be more permanent, you need to set up persistent storage for use in OpenShift
+- In Openshift persistent storage of data is handled by Persistent Volumes
+- PVs in OpenShift use industry standard network-based storage solutions to manage persistent data
+	eg, NFS, AWS EBS, GCP Persistent disk, Gluster, Cinder etc
+- To manage Openshift cluster or to create a PV you need administrator level access
+- The system:admin user is authenticated using a specific SSL certificate, regardless of the authentication provider that’s configured
+- The key and certificate for system:admin are placed in a Kubernetes configuration file when the OpenShift cluster is installed
+- The configuration file for system:admin is created on the master server at /etc/origin/master/admin.kubeconfig
+- OpenShift makes extensive use of configuration files written in YAML format
+- YAML is the default way to push data into and get data out of OpenShift
+- PVs are cluster-wide resources
+	oc --config ~/admin.kubeconfig create -f pv01.yaml
+	oc --config ~/admin.kubeconfig get pv
+- The following data is required to create a persistent volume
+	Type of the resource
+	Size of the PV
+	Storage capacity of the PV
+	Access mode of the PV	(RWO, ROX, RWX )
+	NFS path
+	NFS server
+	Reclaim Policy	(Retain or Recycle)
+- Currently, only GlusterFS and NFS support the RWX access mode	
+- In OpenShift, applications consume persistent storage using persistent volume claims (PVCs). A PVC can be added into an application as a volume using the command line or through the web interface
+- When you create a PVC, OpenShift looks for the best fit among the available PVs and reserves it for use by the PVC
+- By default, any user can create a PVC in their project. The one rule to remember is that a PVC needs to be created in the same project as the project for which it will provide storage
+- Once the PVC is created you can list the available PVC as below
+	oc get pvc
+- Once the PVC is create we need to mount that PVC into application as a volume
+- In OpenShift, a volume is any filesystem, file, or data mounted into an application’s pods to provide persistent data
+- Volumes also are used to provide encrypted data, application configurations, and other types of data
+	oc volume dc/app-cli
+- Each NFS volume is mounted into its application’s mount namespace, as we talked about in chapter 3, so the application’s data is always separated
+- The NFS mount is made available in the container using a technology called a bind mount
+- Using a bind mount makes the content available simultaneously in two locations. A change in one location is automatically reflected in the other location
+- The container only needs to define the name of the volume to mount. OpenShift abstracts how to access the remote volume and make it available in containers
+
+
+===============================================================================================
+Stateful application
+===============================================================================================
+
+- Applications or workload distribute data through replication which requires application level clustering
+- In OpenShift, this type of data replication requires direct pod-to-pod networking without going through the service layer
+- Some stateful applicaiton require support for sticky sessions as well as predictable graceful shutdown
+- Some of the tools used for stateful application are headless services, sticky sessions, pod-discovery techniques, and stateful sets etc
+- A headless service is a service object that doesn’t load-balance or proxy between backend pods. It’s implemented by setting the spec.clusterIP field to None in the service API object
+- Headless services are most often used for applications that need to access specific pods directly without going through the service proxy
+
+- A cookie will be stored in your browser with a simple unique identifier: a randomly generated string called JSESSIONID. When the user initially accesses the web application, the server will reply with a cookie containing the JSESSIONID field and a unique identifier as the value
+- User’s session, which is stored in a replication cache is replicated among all the pods for a service
+- Because the user data will be replicated, the end user will have a consistent experience even if some pods die and new pods are accessed
+- The view role will allow the pods running in the project to query the OpenShift API server directly
+- Wild-Fly uses JGroups under the covers to send messages back and forth between other application servers
+- A Java application server that needs to cluster applications is just one common use case for direct pod discovery and access
+- Sharded database is one in which large datasets are stored in many small databases as opposed to one large database.
+- Sharded databases work well on OpenShift and have been implemented using MongoDB as well as Infinispan, among others
+- One popular application that uses DNS queries to determine which instances to access is Apache Kafka, a fast open source messaging broker
+
+
+
+
+
+
+
+Create Project
+	oc new-project dev --display-name="ToDo App - Dev"
+Import Template into Project
+	oc create -f https://raw.githubusercontent.com/OpenShiftInAction/chapter6/master/openshift-cicd-flask-mongo/OpenShift/templates/dev-todo-app-flask-mongo-gogs.json -n dev
+Instantiate the template
+	oc new-app --template="dev/dev-todo-app-flask-mongo-gogs"
+Check the imagestream image sha256 string
+	oc describe imagestream todo-app-flask-mongo | grep sha256
+Tag the imagestream image with new tag
+	oc tag todo-app-flask-mongo@sha256:55f29438305f9d8b6baf7ac0df8ee17965bb62a1dba8ac01190ad88e0ca18843 dev/todo-app-flask-mongo:promoteToTest
+
+===============================================================================================
+
+Create a new project
+===============================================================================================
+
+$ oc login -u developer -p developer
+$ oc whoami
+$ oc new-project myproject
+$ oc new-app centos/ruby-22-centos7~https://github.com/openshift/ruby-ex.git
+--> Creating resources ...
+    imagestream.image.openshift.io "ruby-22-centos7" created
+    imagestream.image.openshift.io "ruby-ex" created
+    buildconfig.build.openshift.io "ruby-ex" created
+    deploymentconfig.apps.openshift.io "ruby-ex" created
+    service "ruby-ex" created
+$ oc projects
+You have one project on this server: "myproject".
+
+$ oc get imagestreams
+NAME              IMAGE REPOSITORY                                                                    TAGS     UPDATED
+ruby-22-centos7   default-route-openshift-image-registry.apps-crc.testing/myproject/ruby-22-centos7   latest   12 minutes ago
+ruby-ex           default-route-openshift-image-registry.apps-crc.testing/myproject/ruby-ex
+
+Add user user1 with edit role to project myproject
+
+$ oc whoami
+developer$ oc adm policy add-role-to-user edit user1
+clusterrole.rbac.authorization.k8s.io/edit added: "user1"$ oc get rolebindings
+NAME                    AGEadmin                   11m
+edit                    32ssystem:deployers        11m
+system:image-builders   11msystem:image-pullers    11m
+
+Deployment of Application from image
+===============================================================================================
+
+$ oc new-app openshiftkatacoda/blog-django-py --name blog
+$ oc expose svc/blog
+route.route.openshift.io/blog exposed
+
+$ oc get all -o name --selector app=blog
+replicationcontroller/blog-1
+service/blog
+deploymentconfig.apps.openshift.io/blog
+imagestream.image.openshift.io/blog
+route.route.openshift.io/blog
+
+$ oc get routes
+NAME   HOST/PORT                                                         PATH   SERVICES   PORT       TERMINATION   WILDCARD
+blog   blog-myproject.2886795291-80-host18nc.environments.katacoda.com          blog       8080-tcp           None
+
+Scaling the application
+
+$ oc scale --replicas=3 dc/blog
+deploymentconfig.apps.openshift.io/blog scaled
+$ oc describe deploymentconfig.apps.openshift.io/blog
+
+
+
+
+	
+
+
+
+	
