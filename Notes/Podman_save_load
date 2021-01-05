@@ -1,0 +1,148 @@
+Purpose - How to archive and load archived container images using Podman
+
+Pre-requisite -
+Fedora 32 installed
+Podman installed
+
+Podman provides two command line utilities (ie. save and load). 
+
+The 'save' utility helps in capturing an image and converting into a tar archival format and store locally. This tar archivial format encapsulates all the layers of the image. The 'load' utility helps in loading the tar archive format of the image available locally into the container system so that it can be further used to launch containers from the image that we just loaded using this utility. 
+
+Developer often work on preparing their images and publish them onto the Container Registry. But if you want to share it with your team members you can just share the archive format of the image by ssh or any similar tool. This will help the other team members to directly get the image and instantiate a container out of it which will not go downloading the base image and other layers of the image from the registry as in the case of pulling an image for the first time from the registry.
+
+In this article we will look at how we can archive a container image in a tar format which will encapsulate the image layers consisting of file system and how we can load that archived image back into the container system and use it with Podman.
+
+Procedure -
+
+Step1: Pull an image
+
+Here in the first steps let try to pull the official httpd image from DockerHub registry. We will use this image to archive and load in further steps below.
+As you can see from the pull command it actually writes some set of blob's which are called Binary link Objects referring to different layers of the httpd image.
+
+[admin@fed32 test]$ podman pull docker.io/library/httpd:latest
+Trying to pull docker.io/library/httpd:latest...
+Getting image source signatures
+Copying blob 6ec7b7d162b2 done  
+Copying blob 81d0a34533d4 done  
+Copying blob da240d12a8a4 done  
+Copying blob 130aad5bf43a done  
+Copying blob 17e233bac21e done  
+Copying config dd85cdbb99 done  
+Writing manifest to image destination
+Storing signatures
+dd85cdbb99877b73f0de2053f225af590ab188d79469eebdb23ec2d26d0d10e8
+
+You can verify the pulled image by listing the images available on the system as shown below.
+
+[admin@fed32 test]$ podman images
+REPOSITORY                 TAG     IMAGE ID      CREATED        SIZE
+docker.io/library/httpd    latest  dd85cdbb9987  2 weeks ago    142 MB
+
+Step2: Start the container from the image and validate the URL
+
+You can launch a container from the httpd image as shown below to verify its working as expected
+
+[admin@fed32 ~]$ podman run -d -p 8888:80 docker.io/library/httpd:latest
+
+URL - http://localhost:8888/
+
+Once verified stop the container
+
+Step3: Save the image as tar file
+
+[admin@fed32 test]$ podman save dd85cdbb9987 > dockerhttpd.tar
+Copying blob 87c8a1d8f54f done  
+Copying blob d6e97adfe450 done  
+Copying blob 53c77568e9ed done  
+Copying blob 5792ac1517fc done  
+Copying blob bf4cb6a71436 done  
+Copying config dd85cdbb99 done  
+Writing manifest to image destination
+Storing signatures
+[admin@fed32 test]$ 
+
+[admin@fed32 test]$ ls -ltr dockerhttpd.tar 
+-rw-rw-r--. 1 admin admin 141524480 Dec 31 04:13 dockerhttpd.tar
+
+Here in this step it actually encapsulates all the layers of the images as shown below.
+
+
+[admin@fed32 test]$ tar -tvf dockerhttpd.tar 
+-r--r--r-- 0/0        72498176 1970-01-01 05:30 87c8a1d8f54f3aa4e05569e8919397b65056aa71cdf48b7f061432c98475eee9.tar
+-r--r--r-- 0/0            2560 1970-01-01 05:30 d6e97adfe4509ea7104b9bcc527088b7d962ebf9bbb736149e980028b13f8ca3.tar
+-r--r--r-- 0/0         7475200 1970-01-01 05:30 53c77568e9edf02931a4c3e170ef6fdc375b7b9544c019b183261dd60214c456.tar
+-r--r--r-- 0/0        61515264 1970-01-01 05:30 5792ac1517fcd8981736f25455bf0b765b104bf3927610893682f48e9de1c283.tar
+-r--r--r-- 0/0            3584 1970-01-01 05:30 bf4cb6a71436c83b25336a90d943a7d6ab655b97a7ccbf44f5afb07fc538813f.tar
+-r--r--r-- 0/0            8706 1970-01-01 05:30 dd85cdbb99877b73f0de2053f225af590ab188d79469eebdb23ec2d26d0d10e8.json
+l--------- 0/0               0 1970-01-01 05:30 7e3e87b6c660de3387f47156f1a058d7c5db0a71f4464bacb0cde4c9f80bbd7f/layer.tar -> ../87c8a1d8f54f3aa4e05569e8919397b65056aa71cdf48b7f061432c98475eee9.tar
+...
+
+these layers are retrived from the local storage of the image when we initially pulled the image. You can find the location of the image layers storage from the podman info command as shown below. As i am running with non root user these image layers are stored under my home directory '/home/admin/.local/share/containers/storage'.
+
+[admin@fed32 archive]$ podman info | grep -i storage
+  configFile: /home/admin/.config/containers/storage.conf
+  graphRoot: /home/admin/.local/share/containers/storage
+  volumePath: /home/admin/.local/share/containers/storage/volumes
+
+Now that we tar'ed the pulled image, lets remove the httpd image that we pulled from the dockehub in the first step.
+
+[admin@fed32 test]$ podman rmi dd85cdbb9987
+
+Step4: Load the container tar file as image
+
+Here in this step we will try to load the tar archive image with tag loadedhttpd:latest. Once loaded in the list of images we should be able to see the new loaded image locally available for use.
+
+[admin@fed32 test]$ podman load < dockerhttpd.tar loadedhttpd
+
+[admin@fed32 test]$ podman images
+REPOSITORY                 TAG     IMAGE ID      CREATED        SIZE
+localhost/loadedhttpd      latest  dd85cdbb9987  2 weeks ago    142 MB
+
+Step5: Start the container from the new image
+
+Lets use the new local image and start the httpd container and you can validate the url of the httpd instance
+
+[admin@fed32 test]$ podman run -d -p 8888:80 dd85cdbb9987
+
+URL - URL - http://localhost:8888/
+
+Hope you enjoyed reading this article. Thank you..
+
+===================================================================
+
+[admin@fed32 test]$ pwd
+/home/admin/test
+[admin@fed32 test]$ cat Dockerfile 
+FROM busybox
+CMD echo $((40 + 2))
+
+[admin@fed32 test]$ podman build --tag calc
+
+[admin@fed32 test]$ podman images
+REPOSITORY                            TAG     IMAGE ID      CREATED             SIZE
+localhost/calc                        latest  cc27ab94931a  About a minute ago  1.45 MB
+
+[admin@fed32 test]$ podman run localhost/calc
+42
+
+[admin@fed32 test]$ podman save localhost/calc > calc.tar
+
+[admin@fed32 test]$ podman load < calc.tar 
+
+[admin@fed32 test]$ podman run localhost/calc
+
+
+[admin@fed32 test]$ podman ps -a
+CONTAINER ID  IMAGE                                 COMMAND               CREATED         STATUS                     PORTS                   NAMES
+519692afc342  localhost/calc                        /bin/sh -c echo $...  33 seconds ago  Exited (0) 33 seconds ago                          laughing_benz
+
+[admin@fed32 test]$ podman export 519692afc342 > calc-container.tar
+
+[admin@fed32 test]$ podman import calc-container.tar calcfs:latest
+
+[admin@fed32 test]$ podman images
+REPOSITORY                            TAG     IMAGE ID      CREATED             SIZE
+docker.io/library/calcfs              latest  32ebd55764cb  About a minute ago  1.46 MB
+
+
+

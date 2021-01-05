@@ -1,0 +1,148 @@
+Purpose - How to export a runtime container and import to use it as new image
+
+Pre-requisite -
+Fedora 32 installed
+Podman installed
+
+Podman provides two command line utilities (ie. export and import).
+
+The 'export' utility helps in capturing the current snapshot of the container that has been instantiated from an image into a tar archival format and store locally.
+
+The 'import' utility helps in creating a filesystem using the tar file of the container snapshot that we created using the export utility.
+
+The main difference between save/load and export/import utility are as below.
+    - save/load work on the container images taking the snaphost of complete layers of the image and storing them into a tar file which can further be loaded using the load utility
+    - In export/import, export utility work on the container runtime instance to create a snaphost and save it to tar file. While import utility works on create a new image out of the new snapshot in the tar file created from export utility
+
+In this article we try to see how we can use export and import utility.
+
+Procedure -
+
+Step1: Create a DockerFile based on the httpd base image and a hello.html file in current working directory as shown below
+
+[admin@fed32 httpd]$ pwd
+/home/admin/httpd
+
+[admin@fed32 httpd]$ cat Dockerfile 
+FROM httpd:latest
+WORKDIR /usr/local/apache2/htdocs
+COPY hello.html .
+
+[admin@fed32 httpd]$ cat hello.html 
+Hello Podman
+
+
+Step2: Build new image from the above Dockerfile
+
+[admin@fed32 httpd]$ podman build -t hellohttpd .
+STEP 1: FROM httpd:latest
+STEP 2: WORKDIR /usr/local/apache2/htdocs
+--> a504dc9981a
+STEP 3: COPY hello.html .
+STEP 4: COMMIT hellohttpd
+--> a91c3d71227
+a91c3d71227af5e16aeac2e5b9cfab9de0aa62b024c90f62f4421b3b2b341de5
+
+The new custom image has been created with our hello.html page and working directory set /var/www/html
+
+[admin@fed32 httpd]$ podman images
+REPOSITORY               TAG     IMAGE ID      CREATED         SIZE
+localhost/hellohttpd     latest  a91c3d71227a  21 seconds ago  142 MB
+
+Step3: Launch a container from this new image 'hellohttpd' and verify the hello.html page
+
+[admin@fed32 httpd]$ podman run -d -p 9999:80 --name hellopodmancontainer hellohttpd
+74357fa07391bda368ad863ed819951d405ffe1d3c9dfaaf292ea0ae879e5fa6
+[admin@fed32 httpd]$ podman ps -a
+CONTAINER ID  IMAGE                        COMMAND           CREATED        STATUS            PORTS                 NAMES
+74357fa07391  localhost/hellohttpd:latest  httpd-foreground  7 seconds ago  Up 6 seconds ago  0.0.0.0:9999->80/tcp  hellopodmancontainer
+
+Validate the below URL
+URL - http://localhost:9999/hello.html
+
+Step4: Inspect the current hellohttpd image to capture the CMD and WorkingDir
+
+[admin@fed32 httpd]$ podman inspect --format "{{.Config.Cmd}} {{.Config.WorkingDir}}" hellohttpd
+[httpd-foreground] /usr/local/apache2/htdocs
+
+Step5: Create a snapshot of the current container hellopodmancontainer
+
+Stop the container hellopodmancontainer.
+
+[admin@fed32 httpd]$ podman stop hellopodmancontainer
+74357fa07391bda368ad863ed819951d405ffe1d3c9dfaaf292ea0ae879e5fa6
+
+Export the hellopodmancontainer as hellopodmancontainer.tar and verify the tar file.
+
+[admin@fed32 httpd]$ podman export hellopodmancontainer > hellopodmancontainer.tar
+[admin@fed32 httpd]$ ls -ltr hellopodmancontainer.tar 
+-rw-rw-r--. 1 admin admin 138093568 Jan  5 05:52 hellopodmancontainer.tar
+[admin@fed32 httpd]$ tar -tvf hellopodmancontainer.tar 
+drwxr-xr-x root/root         0 2020-12-11 17:50 bin/
+-rwxr-xr-x root/root   1168776 2019-04-18 09:42 bin/bash
+-rwxr-xr-x root/root     43744 2019-02-28 21:00 bin/cat
+-rwxr-xr-x root/root     64320 2019-02-28 21:00 bin/chgrp
+-rwxr-xr-x root/root     64288 2019-02-28 21:00 bin/chmod
+-rwxr-xr-x root/root     72512 2019-02-28 21:00 bin/chown
+-rwxr-xr-x root/root    146880 2019-02-28 21:00 bin/cp
+-rwxr-xr-x root/root    121464 2019-01-18 00:38 bin/dash
+-rwxr-xr-x root/root    109408 2019-02-28 21:00 bin/date
+...
+-rw-r--r-- root/root      1467 2020-12-11 17:49 usr/local/apache2/conf/extra/httpd-vhosts.conf
+-rw-r--r-- root/root      3161 2020-12-11 17:49 usr/local/apache2/conf/extra/proxy-html.conf
+-rw-r--r-- root/root     20823 2020-12-11 17:49 usr/local/apache2/conf/httpd.conf
+-rw-r--r-- root/root     13064 2020-12-11 17:49 usr/local/apache2/conf/magic
+-rw-r--r-- root/root     60847 2020-12-11 17:49 usr/local/apache2/conf/mime.types
+
+Step6: Import the hellopodmancontainer.tar as new container image
+
+[admin@fed32 httpd]$ podman import hellopodmancontainer.tar newhellopodman
+Getting image source signatures
+Copying blob 7998582ca78d done  
+Copying config 446a991661 done  
+Writing manifest to image destination
+Storing signatures
+446a99166173de851753ae01b47baa0123d1a14b73c864a551249bab87a15d2d
+[admin@fed32 httpd]$ podman images
+REPOSITORY                        TAG     IMAGE ID      CREATED         SIZE
+docker.io/library/newhellopodman  latest  446a99166173  5 minutes ago   138 MB
+
+Step7: Launch container from new image 'newhellopodman'
+
+[admin@fed32 httpd]$ podman run -d -p 7777:80 --name newhellopodmancontainer newhellopodman
+Error: no command or entrypoint provided, and no CMD or ENTRYPOINT from image
+
+It shows the error ENTRYPOINT or CMD not provided
+
+Step8: Modify the image to incorporate the CMD, EXPOSE, WORKDIR, ENV and STOPSIGNAL definition as in the original image
+
+Lets try to change the image to incorporate the CMD, EXPOSE, WORKDIR, ENV and STOPSIGNAL definition as in the original image as shown below.
+
+[admin@fed32 httpd]$ podman import hellopodmancontainer.tar newhellopodman2 -c CMD=httpd-foreground -c EXPOSE=80 -c WORKDIR=/usr/local/apache2/htdocs -c ENV=PATH=/usr/local/apache2/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin -c ENV=HTTPD_PREFIX=/usr/local/apache2 -c ENV=HTTPD_VERSION=2.4.46 -c STOPSIGNAL=SIGWINCH
+Getting image source signatures
+Copying blob 7998582ca78d [--------------------------------------] 0.0b / 0.0b
+Copying config aa06e92c70 done  
+Writing manifest to image destination
+Storing signatures
+aa06e92c7009149e02ba9fb8b57b6d1ef246671eb833fd27938b44d85890f018
+
+[admin@fed32 httpd]$ podman inspect --format "{{.Config.Cmd}} {{.Config.WorkingDir}} {{.Config.ExposedPorts}} {{.Config.Env}}" newhellopodman2
+[/bin/sh -c httpd-foreground] /usr/local/apache2/htdocs map[80/tcp:{}] [PATH=/usr/local/apache2/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin HTTPD_PREFIX=/usr/local/apache2 HTTPD_VERSION=2.4.46]
+
+Relaunch the container from the new modified image 'newhellopodman2'
+
+[admin@fed32 httpd]$ podman images
+REPOSITORY                         TAG     IMAGE ID      CREATED      SIZE
+docker.io/library/newhellopodman   latest  446a99166173  2 hours ago  138 MB
+docker.io/library/newhellopodman2  latest  aa06e92c7009  2 hours ago  138 MB
+
+[admin@fed32 httpd]$ podman run -d -p 7777:80 --name newhellopodmancontainer newhellopodman2
+788459b72856dacb16091d8cba5450ffa1685bc8fb2f3903099b4b37860e3adf
+[admin@fed32 httpd]$ 
+[admin@fed32 httpd]$ podman ps -a
+CONTAINER ID  IMAGE                                     COMMAND               CREATED            STATUS                          PORTS                 NAMES
+788459b72856  docker.io/library/newhellopodman2:latest  /bin/sh -c httpd-...  7 seconds ago      Up 6 seconds ago                0.0.0.0:7777->80/tcp  newhellopodmancontainer
+
+Validate the below URL on port 7777
+URL - http://localhost:7777/hello.html
+
