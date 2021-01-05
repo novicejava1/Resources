@@ -1,0 +1,134 @@
+Purpose - GCP Cloud SDK installation and setup
+
+Pre-requisite -
+Fedora 32 installed
+Active GCP account
+
+Procedure -
+
+Step1: Setup the Cloud SDK repository
+
+[admin@fed32 ~]$ sudo vi /etc/yum.repos.d/google-cloud-sdk.repo 
+[admin@fed32 ~]$ cat /etc/yum.repos.d/google-cloud-sdk.repo 
+[google-cloud-sdk]
+name=Google Cloud SDK
+baseurl=https://packages.cloud.google.com/yum/repos/cloud-sdk-el7-x86_64
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg
+       https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+
+Step2: Install Google Cloud SDK
+
+[admin@fed32 ~]$ sudo dnf install google-cloud-sdk
+
+[admin@fed32 ~]$ rpm -qa | grep google-cloud-sdk
+google-cloud-sdk-321.0.0-1.x86_64
+
+[admin@fed32 ~]$ gcloud --version
+Google Cloud SDK 321.0.0
+alpha 2020.12.11
+beta 2020.12.11
+bq 2.0.64
+core 2020.12.11
+gsutil 4.57
+
+
+Step3: Initialize the Google Cloud SDK
+
+
+[admin@fed32 ~]$ gcloud init
+...
+Your Google Cloud SDK is configured and ready to use!
+
+* Commands that require authentication will use sudhirbhoga@gmail.com by default
+* Commands will reference project `gcplearning-299822` by default
+* Compute Engine commands will use region `asia-south1` by default
+* Compute Engine commands will use zone `asia-south1-a` by default
+
+Run `gcloud help config` to learn how to change individual settings
+
+This gcloud configuration is called [default]. You can create additional configurations if you work with multiple accounts and/or projects.
+Run `gcloud topic configurations` to learn more.
+
+Step4: Validate the initial configuration
+
+[admin@fed32 ~]$ gcloud auth list
+    Credentialed Accounts
+ACTIVE  ACCOUNT
+*       sudhirbhoga@gmail.com
+
+To set the active account, run:
+    $ gcloud config set account `ACCOUNT`
+
+[admin@fed32 ~]$ 
+[admin@fed32 ~]$ 
+[admin@fed32 ~]$ gcloud config list
+[compute]
+region = asia-south1
+zone = asia-south1-a
+[core]
+account = sudhirbhoga@gmail.com
+disable_usage_reporting = True
+project = gcplearning-299822
+
+Your active configuration is: [default]
+
+Complete information about the installation paths and libraries that are installed is available with the below command
+
+[admin@fed32 ~]$ gcloud info
+
+Step5: List gcloud compoents and their Status
+
+[admin@fed32 ~]$ gcloud components list
+
+Your current Cloud SDK version is: 321.0.0
+The latest available version is: 321.0.0
+
+┌────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                                 Components                                                 │
+├───────────────┬──────────────────────────────────────────────────────┬──────────────────────────┬──────────┤
+│     Status    │                         Name                         │            ID            │   Size   │
+├───────────────┼──────────────────────────────────────────────────────┼──────────────────────────┼──────────┤
+│ Not Installed │ App Engine Go Extensions                             │ app-engine-go            │  4.9 MiB │
+│ Not Installed │ Appctl                                               │ appctl                   │ 21.0 MiB │
+│ Not Installed │ Cloud Bigtable Command Line Tool                     │ cbt                      │  7.7 MiB │
+│ Not Installed │ Cloud Bigtable Emulator                              │ bigtable                 │  6.6 MiB │
+│ Not Installed │ Cloud Datalab Command Line Tool                      │ datalab                  │  < 1 MiB │
+...
+│ Not Installed │ App Engine Go Extensions                             │ app-engine-go            │  4.9 MiB │
+│ Not Installed │ gcloud app Java Extensions                           │ app-engine-java          │ 59.6 MiB │
+│ Not Installed │ gcloud app Python Extensions                         │ app-engine-python        │  6.1 MiB │
+│ Not Installed │ gcloud app Python Extensions (Extra Libraries)       │ app-engine-python-extras │ 27.1 MiB │
+
+
+Step6: Install app-engine-python Cloud Component
+
+[admin@fed32 ~]$ gcloud components install app-engine-python
+ERROR: (gcloud.components.install) 
+You cannot perform this action because the Cloud SDK component manager 
+is disabled for this installation. You can run the following command 
+to achieve the same result for this installation: 
+
+sudo yum install google-cloud-sdk-app-engine-python
+
+As per the above error message lets try to install the component using the package manager as Cloud SDK component manager is disabled if we install the SDK using the package repository.
+
+[admin@fed32 ~]$ sudo yum install google-cloud-sdk-app-engine-python
+
+Step7: Validate the app-engine-python Cloud Component installation
+
+[admin@fed32 ~]$ gcloud components list | grep -i "app-engine"
+
+Your current Cloud SDK version is: 321.0.0
+The latest available version is: 321.0.0
+
+│ Not Installed │ App Engine Go Extensions                             │ app-engine-go            │  4.9 MiB │
+│ Not Installed │ gcloud app Java Extensions                           │ app-engine-java          │ 59.6 MiB │
+│ Not Installed │ gcloud app Python Extensions (Extra Libraries)       │ app-engine-python-extras │ 27.1 MiB │
+│ Installed     │ gcloud app Python Extensions                         │ app-engine-python        │  6.1 MiB │
+
+
+
+

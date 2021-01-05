@@ -1,0 +1,157 @@
+Purpose - Create and Manage Compute Engine VM's in GCP
+
+Pre-requisite -
+Fedora 32 installed
+Active GCP account
+
+Procedure -
+
+Step1: Create an Ubuntu instacne with the following parameter in the GUI
+
+Instance Name   : ubser-1
+Label           : env=dev
+Region          : us-central1
+Zone            : us-central1-a
+Machine Type    : e2-micro
+Image           : Ubuntu 20.04 LTS with 10 GB Standard Persistent Disk
+Other Config    : Set as default
+
+This will create an instance with a Boot disk name same as Instance name (ie. ubser-1). Also it will assign an Internal IP address based on the default subnet which is assigned for your instance based on the region selected and an external IP address is also assigned
+
+In my case the default subnet that is assigned to my instance is '10.128.0.0/20'
+
+Internal IP address - 10.128.0.4
+External IP address - 34.122.64.164
+
+Step2: Get the list of instances and disks using gcloud cli
+
+[admin@fed32 ~]$ gcloud compute instances list
+NAME     ZONE           MACHINE_TYPE  PREEMPTIBLE  INTERNAL_IP  EXTERNAL_IP    STATUS
+ubser-1  us-central1-a  e2-micro                   10.128.0.4   34.122.64.164  RUNNING
+
+[admin@fed32 ~]$ gcloud compute disks list
+NAME     LOCATION       LOCATION_SCOPE  SIZE_GB  TYPE         STATUS
+ubser-1  us-central1-a  zone            10       pd-standard  READY
+
+The output that we see here is a human readable format with limited details about the instance. In case we want to get the complete details about the instance in JSON or YAML format we can run the below command.
+
+[admin@fed32 ~]$ gcloud compute instances list --format json
+[admin@fed32 ~]$ gcloud compute instances list --format yaml
+[admin@fed32 ~]$ gcloud compute instances list --format text
+
+Step3: Stop the Compute instance
+
+[admin@fed32 ~]$ gcloud compute instances stop ubser-1 --zone=us-central1-a
+
+[admin@fed32 ~]$ gcloud compute instances list
+NAME     ZONE           MACHINE_TYPE  PREEMPTIBLE  INTERNAL_IP  EXTERNAL_IP  STATUS
+ubser-1  us-central1-a  e2-micro                   10.128.0.4                TERMINATED
+
+Step4: Start the Compute instance
+
+[admin@fed32 ~]$ gcloud compute instances start ubser-1 --zone=us-central1-a
+
+[admin@fed32 ~]$ gcloud compute instances list
+NAME     ZONE           MACHINE_TYPE  PREEMPTIBLE  INTERNAL_IP  EXTERNAL_IP     STATUS
+ubser-1  us-central1-a  e2-micro                   10.128.0.4   35.188.124.254  RUNNING
+
+One important thing to note here is that once we restart the instance the External IP associated with the instances gets changed. The External IP address assigned to the instance is not persistent with the instance lifecycle.
+
+[admin@fed32 ~]$ gcloud compute instances list --format text | grep -i nat
+networkInterfaces[0].accessConfigs[0].name:            External NAT
+networkInterfaces[0].accessConfigs[0].natIP:           35.188.124.254
+networkInterfaces[0].accessConfigs[0].type:            ONE_TO_ONE_NAT
+
+The External IP address that is assigned to the instance is an NAT IP address.
+
+Step5: Create an Ubuntu instacne with the following parameter using Cloud SDK or Cloud Shell
+
+Instance Name   : ubser-2
+Label           : env=uat
+Region          : us-central1
+Zone            : us-central1-b
+Machine Type    : e2-micro
+Image           : Ubuntu 20.04 LTS with 10 GB Standard Persistent Disk
+Other Config    : Set as default
+
+Identify the image name from the list of images available in public images.
+
+[admin@fed32 ~]$ gcloud compute images list --filter=[ubuntu]
+NAME                                  PROJECT          FAMILY                   DEPRECATED  STATUS
+ubuntu-1604-xenial-v20201210          ubuntu-os-cloud  ubuntu-1604-lts                      READY
+ubuntu-1804-bionic-v20201211a         ubuntu-os-cloud  ubuntu-1804-lts                      READY
+ubuntu-2004-focal-v20201211           ubuntu-os-cloud  ubuntu-2004-lts                      READY
+ubuntu-2010-groovy-v20201210          ubuntu-os-cloud  ubuntu-2010                          READY
+ubuntu-minimal-1604-xenial-v20201210  ubuntu-os-cloud  ubuntu-minimal-1604-lts              READY
+ubuntu-minimal-1804-bionic-v20201216  ubuntu-os-cloud  ubuntu-minimal-1804-lts              READY
+ubuntu-minimal-2004-focal-v20201211   ubuntu-os-cloud  ubuntu-minimal-2004-lts              READY
+ubuntu-minimal-2010-groovy-v20201210  ubuntu-os-cloud  ubuntu-minimal-2010                  READY
+
+[admin@fed32 ~]$ gcloud compute instances create ubser-2 --machine-type=e2-micro --image=ubuntu-2004-focal-v20201211 --image-project=ubuntu-os-cloud --labels=env=uat --zone=us-central1-b
+Created [https://www.googleapis.com/compute/v1/projects/gcplearning-299822/zones/us-central1-b/instances/ubser-2].
+NAME     ZONE           MACHINE_TYPE  PREEMPTIBLE  INTERNAL_IP  EXTERNAL_IP    STATUS
+ubser-2  us-central1-b  e2-micro                   10.128.0.5   34.122.64.164  RUNNING
+
+[admin@fed32 ~]$ gcloud compute instances list
+NAME     ZONE           MACHINE_TYPE  PREEMPTIBLE  INTERNAL_IP  EXTERNAL_IP     STATUS
+ubser-1  us-central1-a  e2-micro                   10.128.0.4   35.188.124.254  RUNNING
+ubser-2  us-central1-b  e2-micro                   10.128.0.5   34.122.64.164   RUNNING
+
+[admin@fed32 ~]$ gcloud compute disks list
+NAME     LOCATION       LOCATION_SCOPE  SIZE_GB  TYPE         STATUS
+ubser-1  us-central1-a  zone            10       pd-standard  READY
+ubser-2  us-central1-b  zone            10       pd-standard  READY
+
+Step6: Create a snapshot of the disk
+
+[admin@fed32 ~]$ gcloud compute disks snapshot ubser-1 --snapshot-names=ubser-1-snapshot --zone=us-central1-a
+Creating snapshot(s) ubser-1-snapshot...done.                                                                                         
+[admin@fed32 ~]$ 
+[admin@fed32 ~]$ gcloud compute disks snapshot ubser-2 --snapshot-names=ubser-2-snapshot --zone=us-central1-b
+Creating snapshot(s) ubser-2-snapshot...done. 
+
+[admin@fed32 ~]$ gcloud compute snapshots describe ubser-1-snapshot
+creationTimestamp: '2020-12-28T00:58:22.710-08:00'
+diskSizeGb: '10'
+downloadBytes: '655537518'
+id: '2955226188043526337'
+kind: compute#snapshot
+labelFingerprint: 42WmSpB8rSM=
+licenseCodes:
+- '2211838267635035815'
+licenses:
+- https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/licenses/ubuntu-2004-lts
+name: ubser-1-snapshot
+selfLink: https://www.googleapis.com/compute/v1/projects/gcplearning-299822/global/snapshots/ubser-1-snapshot
+sourceDisk: https://www.googleapis.com/compute/v1/projects/gcplearning-299822/zones/us-central1-a/disks/ubser-1
+sourceDiskId: '8882054917905462950'
+status: READY
+storageBytes: '655521856'
+storageBytesStatus: UP_TO_DATE
+storageLocations:
+- us
+[admin@fed32 ~]$ gcloud compute snapshots describe ubser-2-snapshot
+creationTimestamp: '2020-12-28T00:59:09.097-08:00'
+diskSizeGb: '10'
+downloadBytes: '655024833'
+id: '4327695696288555187'
+kind: compute#snapshot
+labelFingerprint: 42WmSpB8rSM=
+licenseCodes:
+- '2211838267635035815'
+licenses:
+- https://www.googleapis.com/compute/v1/projects/ubuntu-os-cloud/global/licenses/ubuntu-2004-lts
+name: ubser-2-snapshot
+selfLink: https://www.googleapis.com/compute/v1/projects/gcplearning-299822/global/snapshots/ubser-2-snapshot
+sourceDisk: https://www.googleapis.com/compute/v1/projects/gcplearning-299822/zones/us-central1-b/disks/ubser-2
+sourceDiskId: '237275101069060074'
+status: READY
+storageBytes: '655009216'
+storageBytesStatus: UP_TO_DATE
+storageLocations:
+- us
+
+
+
+
+
