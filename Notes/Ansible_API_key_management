@@ -1,0 +1,167 @@
+Purpose - Encrypting API key using ansible-vault for usage in Python application
+
+Pre-requisite -
+Ansible Controller
+Ansible Node
+
+In this article we will see how we can encrypt an API key value pair using the ansible-vault and utilize that encrypted value in the Python Application. Here we are going to call a simple API which fetches the details of the PINCODE from Python standalone application.
+
+Procedure -
+
+Step1: Create a API key value pair file
+
+As a first step lets create apikey.yaml holding the key value pair related to API that we are going to call from the python application.
+
+[admin@fedser pincodeapi]$ cat apikey.yaml
+api_key: 2a4940fac9msha85bed4cc1c0f92p13c187jsn351142a50d3c
+
+Step2: Encrypt the API key value pair file using ansible-vault
+
+Now, lets encrypt the key value pair file using the ansible-vault so that the key can be secured from unauthorized persons.
+
+[admin@fedser pincodeapi]$ ansible-vault encrypt apikey.yaml 
+New Vault password: 
+$ANSIBLE_VAULT;1.1;AES256
+65303562616665393637626235376562393332623162373638636632343762336563663762626330
+3064313435633139613835356563653863346235316232650a643864313331363265333938656233
+36643533623033623331666331373630646232383139663266383134396466646532373662633539
+3462333563313639370a623133653166653231303334383135613231656135326231363139383233
+34626130636265323566613038386639333734333362346332636462383162353831326566306561
+61353161333065346135353862623938653930383638356634343336386537353130393138316162
+373562353734636537366435623836373838
+
+Step3: Create standalone Python application to call the API to fetch pincode data
+
+Here is a sample python code in which we are going to api key and host data as header and request payload to fetch the details for pincode 400018 as shown below.
+
+[admin@fedser pincodeapi]$ cat pincodedetails.py
+#!/usr/bin/env python3
+
+import requests
+import sys
+
+api_key=sys.argv[1]
+
+url = "https://pincode.p.rapidapi.com/"
+
+payload = "{\n    \"searchBy\": \"pincode\",\n    \"value\": 400018\n}"
+headers = {
+    'content-type': "application/json",
+    'x-rapidapi-key': str(api_key),
+    'x-rapidapi-host': "pincode.p.rapidapi.com"
+    }
+
+response = requests.request("POST", url, data=payload, headers=headers)
+
+print(response.text)
+
+Step4: Create Ansible Playbook to execute the Python application with argument on remote node
+
+Lets now create our ansible-playbook to push the Python application to remote node and execute it to fetch the pincode data. As you can see from the below task list, we are first creating a directory and then copying the script to remote node. As a third task we need to make sure pip package and python request module is installed on the remote node for the python application to work.
+
+Also note, the encrypted apikey.yaml file that we are using in the playbook to get the key value and use it as argument in the python application execution step as shown below.
+
+[admin@fedser pincodeapi]$ cat pincodeapi.yaml 
+---
+- hosts: stack
+  remote_user: admin
+  vars_files:
+    - apikey.yaml
+  tasks:
+    - name: Create a directory
+      file:
+        path: /home/admin/pythonapiapp
+        state: directory
+        owner: admin
+        group: admin
+    - name: Copy the Python script
+      copy:
+        src: /home/admin/ansibleexample/pincodeapi/pincodedetails.py
+        dest: /home/admin/pythonapiapp/
+        mode: 0755
+    - name: Install Python pip package
+      yum: name=pip state=latest
+      become: true
+    - name: Install Python requests module
+      command: python3 -m pip install requests --user
+    - name: Execute the Python script
+      command: /home/admin/pythonapiapp/pincodedetails.py "{{ api_key }}"
+
+      register: apidata
+    - name: Print the apidata
+      debug: msg="{{ apidata.stdout }}"
+
+Step5: Execute the ansible-playbook to fetch the API data
+
+Now we are ready with the encrypted API key value data and the python application that we want to execute on the remote node. Lets go ahead and execute the playbook on remote node as shown below. We need to key in the vault password which we used to encrypt the data to decrypt it while playbook execution.
+Also i am running the yum install pip as root user for which become=true is required.
+
+[admin@fedser pincodeapi]$ ansible-playbook pincodeapi.yaml -K --ask-vault
+BECOME password: 
+Vault password: 
+
+PLAY [stack] *****************************************************************************************************************
+
+TASK [Gathering Facts] *******************************************************************************************************
+ok: [192.168.47.130]
+
+TASK [Create a directory] ****************************************************************************************************
+ok: [192.168.47.130]
+
+TASK [Copy the Python script] ************************************************************************************************
+ok: [192.168.47.130]
+
+TASK [Install Python pip package] ********************************************************************************************
+ok: [192.168.47.130]
+
+TASK [Install Python requests module] ****************************************************************************************
+changed: [192.168.47.130]
+
+TASK [Execute the Python script] *********************************************************************************************
+changed: [192.168.47.130]
+
+TASK [Print the apidata] *****************************************************************************************************
+ok: [192.168.47.130] => {
+    "msg": [
+        {
+            "circle": "Maharashtra",
+            "delivery": "Non-Delivery",
+            "district": "Mumbai",
+            "division": "Mumbai  West",
+            "latitude": "Not Available",
+            "longitude": "Not Available",
+            "office": "Worli Naka S.O",
+            "office_type": "S.O",
+            "phone": "022-24934927",
+            "pin": 400018,
+            "region": "Mumbai",
+            "related_headoffice": "Mahim H.O",
+            "related_suboffice": "Not Available",
+            "state_id": 19,
+            "taluk": "Mumbai"
+        },
+        {
+            "circle": "Maharashtra",
+            "delivery": "Delivery",
+            "district": "Mumbai",
+            "division": "Mumbai  West",
+            "latitude": "Not Available",
+            "longitude": "Not Available",
+            "office": "Worli S.O",
+            "office_type": "S.O",
+            "phone": "022-24930108",
+            "pin": 400018,
+            "region": "Mumbai",
+            "related_headoffice": "Mahim H.O",
+            "related_suboffice": "Not Available",
+            "state_id": 19,
+            "taluk": "Mumbai"
+        }
+    ]
+}
+
+PLAY RECAP *******************************************************************************************************************
+192.168.47.130             : ok=7    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+Hope you got an understanding on how to encrypt key value pair files and use the encrypted content in the application. Thank you for reading.
+
