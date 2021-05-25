@@ -1,0 +1,91 @@
+Purpose - How to enable ProxyPass in Apache HTTP server for Jenkins tool access
+
+Pre-requisite -
+Fedora 32 installed with selinux enabled
+Apahce HTTP server installed
+Jenkins installed
+
+In this article we will how we can enable access to Jenkins URL which runs on deafult port 8080 from Apache HTTP server on port 80.
+
+Procedure -
+
+Step1: Validate Apache HTTP server installation
+
+[root@fedser httpd]# rpm -qa httpd
+httpd-2.4.46-1.fc32.x86_64
+
+[root@fedser httpd]# ps -ef | grep httpd
+root       16925       1  0 09:13 ?        00:00:00 /usr/sbin/httpd -DFOREGROUND
+apache     16926   16925  0 09:13 ?        00:00:00 /usr/sbin/httpd -DFOREGROUND
+apache     16927   16925  0 09:13 ?        00:00:00 /usr/sbin/httpd -DFOREGROUND
+apache     16928   16925  0 09:13 ?        00:00:00 /usr/sbin/httpd -DFOREGROUND
+apache     16929   16925  0 09:13 ?        00:00:00 /usr/sbin/httpd -DFOREGROUND
+apache     17143   16925  0 09:13 ?        00:00:00 /usr/sbin/httpd -DFOREGROUND
+root       17636   15175  0 09:39 pts/0    00:00:00 grep --color=auto httpd
+
+URL - http://fedser.stack.com/ - [FQDN on my Linux system - fedser.stack.com]
+
+Step2: Validate Jenkins installation
+
+[root@fedser httpd]# rpm -qa | grep jenkins
+jenkins-2.277.4-1.1.noarch
+
+[root@fedser httpd]# ps -ef | grep jenkins
+jenkins     1291       1  2 07:38 ?        00:02:27 /etc/alternatives/java -Dcom.sun.akuma.Daemon=daemonized -Djava.awt.headless=true -DJENKINS_HOME=/var/lib/jenkins -jar /usr/lib/jenkins/jenkins.war --logfile=/var/log/jenkins/jenkins.log --webroot=/var/cache/jenkins/war --daemon --httpPort=8080 --debug=5 --handlerCountMax=100 --handlerCountMaxIdle=20
+root       17650   15175  0 09:39 pts/0    00:00:00 grep --color=auto jenkins
+
+URL - http://fedser.stack.com:8080/
+
+Step3: Enable and Load the Proxy modules
+
+[root@fedser conf.modules.d]# cat /etc/httpd/conf.modules.d/00-proxy.conf | egrep "\<mod_proxy\>|\<mod_proxy_http\>"
+LoadModule proxy_module modules/mod_proxy.so
+LoadModule proxy_http_module modules/mod_proxy_http.so
+
+Step4: Create the below virtual host configuration file for enabling proxy access to Jenkins Application
+
+[root@fedser conf.d]# cat /etc/httpd/conf.d/jenkins.conf 
+<VirtualHost *:80>
+
+<Directory />
+    AllowOverride none
+    #Require all denied
+    Require host stack.com
+</Directory>
+
+ServerAdmin admin@feser.stack.com
+ProxyRequests Off
+ProxyPreserveHost On
+AllowEncodedSlashes On
+
+<Proxy *>
+Require all granted
+</Proxy>
+
+ProxyPass / http://fedser.stack.com:8080/ nocanon
+ProxyPassReverse / http://fedser.stack.com:8080/
+</VirtualHost>
+
+Step5: Restart the httpd service
+
+[root@fedser conf]# systemctl restart httpd.service 
+
+Step6: Access the Jenkins Application on port 80
+
+URL - http://fedser.stack.com/
+
+If you get any Error 403 Permission denied exception while accessing the application as shown below in the error_log thats because of SELinux enabled on the Linxu system which is blocking the outbound network connection from Apache HTTP server on port 8080.
+
+[root@fedser httpd]# tail -f error_log
+[Tue May 25 08:58:10.941538 2021] [proxy:error] [pid 16133:tid 16235] (13)Permission denied: AH00957: HTTP: attempt to connect to 127.0.0.1:8080 (localhost) failed
+[Tue May 25 08:58:10.941626 2021] [proxy_http:error] [pid 16133:tid 16235] [client 127.0.0.1:41684] AH01114: HTTP: failed to make connection to backend: localhost
+[Tue May 25 08:58:11.654201 2021] [proxy:error] [pid 16134:tid 16261] (13)Permission denied: AH00957: HTTP: attempt to connect to 127.0.0.1:8080 (localhost) failed
+
+To resolve this error you need to enable the outbound http network connection boolean as shown below.
+
+[root@fedser httpd]# /usr/sbin/setsebool -P httpd_can_network_connect 1
+
+Once the selinux boolean is enabled we should be able to access the application and load the Jenkins login page
+
+Hope you learnt something in this article. Thank you..
+
